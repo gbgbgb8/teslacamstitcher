@@ -1,12 +1,12 @@
 const LAYOUTS = {
     MOBILE_LANDSCAPE: {
         width: 1920,
-        height: 840,
+        height: 1080,
         cameras: {
-            front: { width: 960, height: 720, x: 0, y: 0 },
-            left: { width: 480, height: 360, x: 0, y: 720 },
-            right: { width: 480, height: 360, x: 480, y: 720 },
-            rear: { width: 960, height: 720, x: 960, y: 0 },
+            front: { width: 1920, height: 1080, x: 0, y: 0 },
+            rear: { width: 640, height: 360, x: 1280, y: 720 },
+            left: { width: 640, height: 360, x: 0, y: 720 },
+            right: { width: 640, height: 360, x: 640, y: 720 },
         },
     },
     FULLSCREEN: {
@@ -180,33 +180,32 @@ async function processVideos() {
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw blurred background
-        ctx.filter = 'blur(20px)';
-        for (const [camera, video] of Object.entries(videoElements)) {
-            const { width, height, x, y } = selectedLayout.cameras[camera];
-            ctx.drawImage(video, x, y, width, height);
+        // Draw front camera view (main view)
+        if (videoElements.front) {
+            drawVideo(ctx, videoElements.front, selectedLayout.cameras.front);
         }
-        ctx.filter = 'none';
 
-        // Draw actual videos
-        for (const [camera, video] of Object.entries(videoElements)) {
-            const { width, height, x, y } = selectedLayout.cameras[camera];
-            const aspectRatio = video.videoWidth / video.videoHeight;
-            let drawWidth = width;
-            let drawHeight = height;
-            let drawX = x;
-            let drawY = y;
-
-            if (width / height > aspectRatio) {
-                drawWidth = height * aspectRatio;
-                drawX = x + (width - drawWidth) / 2;
-            } else {
-                drawHeight = width / aspectRatio;
-                drawY = y + (height - drawHeight) / 2;
+        // Draw other camera views with fade effect
+        ['rear', 'left', 'right'].forEach(camera => {
+            if (videoElements[camera]) {
+                ctx.save();
+                ctx.globalAlpha = 0.7; // Adjust for desired fade effect
+                drawVideo(ctx, videoElements[camera], selectedLayout.cameras[camera]);
+                ctx.restore();
             }
+        });
 
-            ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
-        }
+        // Add subtle border between camera views
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 720);
+        ctx.lineTo(1920, 720);
+        ctx.moveTo(640, 720);
+        ctx.lineTo(640, 1080);
+        ctx.moveTo(1280, 720);
+        ctx.lineTo(1280, 1080);
+        ctx.stroke();
 
         if (showTimestamp) {
             const elapsedTime = Date.now() - startTime;
@@ -228,4 +227,23 @@ async function processVideos() {
     }
 
     drawFrame();
+}
+
+function drawVideo(ctx, video, layout) {
+    const { width, height, x, y } = layout;
+    const aspectRatio = video.videoWidth / video.videoHeight;
+    let drawWidth = width;
+    let drawHeight = height;
+    let drawX = x;
+    let drawY = y;
+
+    if (width / height > aspectRatio) {
+        drawWidth = height * aspectRatio;
+        drawX = x + (width - drawWidth) / 2;
+    } else {
+        drawHeight = width / aspectRatio;
+        drawY = y + (height - drawHeight) / 2;
+    }
+
+    ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
 }
