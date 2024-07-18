@@ -33,9 +33,8 @@ const LAYOUTS = {
 
 let videos = { front: null, left: null, right: null, rear: null };
 let excludedCameras = [];
-let ffmpeg;
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
     const processButton = document.getElementById('processButton');
@@ -50,24 +49,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     showTimestampCheckbox.addEventListener('change', toggleTimestampFormat);
 
     toggleTimestampFormat();
-
-    // Initialize ffmpeg
-    try {
-        ffmpeg = new FFmpeg();
-        await ffmpeg.load({
-            log: true,
-            progress: ({ ratio }) => {
-                const percent = (ratio * 100).toFixed(2);
-                document.getElementById('progressBar').style.width = `${percent}%`;
-                document.getElementById('progressText').textContent = `${percent}%`;
-            },
-        });
-        console.log('ffmpeg is ready to use');
-        document.getElementById('message').textContent = 'ffmpeg.wasm is ready. You can now process videos.';
-    } catch (error) {
-        console.error('Failed to load ffmpeg:', error);
-        document.getElementById('message').textContent = 'Failed to load ffmpeg.wasm. Please check your internet connection and try again.';
-    }
 });
 
 function handleDrag(e) {
@@ -132,86 +113,76 @@ function toggleTimestampFormat() {
 async function processVideos() {
     const messageElement = document.getElementById('message');
     const outputElement = document.getElementById('output');
-    const progressElement = document.getElementById('progress');
+    const canvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+
     messageElement.textContent = 'Processing videos...';
     outputElement.innerHTML = '';
     document.getElementById('processButton').disabled = true;
-    progressElement.style.display = 'block';
 
     const layout = document.getElementById('layout').value;
     const showTimestamp = document.getElementById('showTimestamp').checked;
     const timestampFormat = document.getElementById('timestampFormat').value;
-    const videoSpeed = parseFloat(document.getElementById('videoSpeed').value);
 
     const selectedLayout = LAYOUTS[layout];
+    canvas.width = selectedLayout.width;
+    canvas.height = selectedLayout.height;
 
-    try {
-        // Process each video
-        for (const [camera, video] of Object.entries(videos)) {
-            if (video && !excludedCameras.includes(camera)) {
-                const inputName = `input_${camera}.mp4`;
-                const { width, height } = selectedLayout.cameras[camera];
-                await ffmpeg.writeFile(inputName, await FFmpeg.fetchFile(video));
-                await ffmpeg.exec([
-                    '-i', inputName,
-                    '-vf', `scale=${width}:${height},setpts=${1/videoSpeed}*PTS`,
-                    '-c:v', 'libx264',
-                    '-crf', '23',
-                    '-preset', 'medium',
-                    '-an',
-                    `output_${camera}.mp4`
-                ]);
-                messageElement.textContent = `Processed ${camera} camera`;
-            }
+    const videoElements = {};
+    for (const [camera, file] of Object.entries(videos)) {
+        if (file && !excludedCameras.includes(camera)) {
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            await video.play();
+            videoElements[camera] = video;
         }
+    }
 
-        // Combine videos
-        const filterComplex = [];
-        const inputs = [];
-        const availableCameras = Object.entries(videos)
-            .filter(([camera, v]) => v !== null && !excludedCameras.includes(camera));
+    const startTime = Date.now();
+    const stream = canvas.captureStream();
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
-        availableCameras.forEach(([camera], index) => {
-            inputs.push('-i', `output_${camera}.mp4`);
-            const { x, y } = selectedLayout.cameras[camera];
-            filterComplex.push(`[${index}:v]setpts=PTS-STARTPTS,format=yuva420p,colorchannelmixer=aa=1[${camera}];`);
-            filterComplex.push(`[${camera}]overlay=${x}:${y}:shortest=1:format=yuv420`);
-            if (index < availableCameras.length - 1) filterComplex.push('[temp];[temp]');
-        });
+    const chunks = [];
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const videoUrl = URL.createObjectURL(blob);
+        outputElement.innerHTML = `
+            <video controls src="${videoUrl}" style="width: 100%;"></video>
+            <a href="${videoUrl}" download="processed_dashcam_video.webm">Download Video</a>
+        `;
+        messageElement.textContent = 'Video processing complete!';
+    };
+
+    recorder.start();
+
+    function drawFrame() {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (const [camera, video] of Object.entries(videoElements)) {
+            const { width, height, x, y } = selectedLayout.cameras[camera];
+            ctx.drawImage(video, x, y, width, height);
+        }
 
         if (showTimestamp) {
-            filterComplex.push(`,drawtext=fontfile=/System/Library/Fonts/Helvetica.ttc:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:x=(w-tw)/2:y=h-th-10:text='${timestampFormat}'`);
+            const elapsedTime = Date.now() - startTime;
+            const timestamp = moment(startTime + elapsedTime).format(timestampFormat);
+            ctx.font = '24px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.fillText(timestamp, canvas.width / 2, canvas.height - 10);
         }
 
-        const { width, height } = selectedLayout;
-        await ffmpeg.exec([
-            '-f', 'lavfi', '-i', `color=c=black:s=${width}x${height}`,
-            ...inputs,
-            '-filter_complex', filterComplex.join(''),
-            '-c:v', 'libx264',
-            '-crf', '23',
-            '-preset', 'medium',
-            'output.mp4'
-        ]);
-
-        messageElement.textContent = 'Finalizing video...';
-
-        const data = await ffmpeg.readFile('output.mp4');
-        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-        const videoUrl = URL.createObjectURL(videoBlob);
-
-        outputElement.innerHTML = `
-            <h2>Processed Video:</h2>
-            <video controls src="${videoUrl}" style="width: 100%;"></video>
-            <a href="${videoUrl}" download="processed_dashcam_video.mp4">Download Video</a>
-        `;
-
-        messageElement.textContent = 'Video processing complete!';
-    } catch (error) {
-        console.error('Error processing videos:', error);
-        messageElement.textContent = `Error processing videos: ${error.message}. Please try again.`;
-    } finally {
-        document.getElementById('processButton').disabled = false;
-        progressElement.style.display = 'none';
+        if (Object.values(videoElements)[0].currentTime < Object.values(videoElements)[0].duration) {
+            requestAnimationFrame(drawFrame);
+        } else {
+            recorder.stop();
+            for (const video of Object.values(videoElements)) {
+                video.pause();
+            }
+        }
     }
+
+    drawFrame();
 }
