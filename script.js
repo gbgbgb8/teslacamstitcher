@@ -1,4 +1,14 @@
 const LAYOUTS = {
+    MOBILE_LANDSCAPE: {
+        width: 1920,
+        height: 840,
+        cameras: {
+            front: { width: 960, height: 720, x: 0, y: 0 },
+            left: { width: 480, height: 360, x: 0, y: 720 },
+            right: { width: 480, height: 360, x: 480, y: 720 },
+            rear: { width: 960, height: 720, x: 960, y: 0 },
+        },
+    },
     FULLSCREEN: {
         width: 1920,
         height: 960,

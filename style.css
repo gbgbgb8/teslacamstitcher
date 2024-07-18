@@ -2,9 +2,10 @@ body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
     color: #333;
-    max-width: 800px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 20px;
+    box-sizing: border-box;
 }
 
 .container {
@@ -15,6 +16,7 @@ body {
 
 h1 {
     color: #2c3e50;
+    text-align: center;
 }
 
 .drop-zone {
@@ -24,6 +26,7 @@ h1 {
     text-align: center;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    margin-bottom: 20px;
 }
 
 .drop-zone.drag-active {
@@ -67,6 +70,8 @@ button {
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s ease;
+    display: block;
+    margin: 20px auto;
 }
 
 button:hover {
@@ -81,6 +86,7 @@ button:disabled {
 .message {
     margin-top: 20px;
     font-weight: bold;
+    text-align: center;
 }
 
 .output {
@@ -89,10 +95,13 @@ button:disabled {
 
 .output video {
     max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
 }
 
 .output a {
-    display: inline-block;
+    display: block;
     margin-top: 10px;
     padding: 10px 20px;
     background-color: #2ecc71;
@@ -100,6 +109,7 @@ button:disabled {
     text-decoration: none;
     border-radius: 5px;
     transition: background-color 0.3s ease;
+    text-align: center;
 }
 
 .output a:hover {
@@ -108,4 +118,39 @@ button:disabled {
 
 #outputCanvas {
     display: none;
+}
+
+.capitalize {
+    text-transform: capitalize;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    select, input[type="text"], input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    button {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .option-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    label {
+        width: 100%;
+        margin-bottom: 5px;
+    }
 }
