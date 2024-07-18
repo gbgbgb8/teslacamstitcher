@@ -45,10 +45,80 @@ let videos = { front: null, left: null, right: null, rear: null };
 let excludedCameras = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ... (previous code remains the same)
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const processButton = document.getElementById('processButton');
+    const showTimestampCheckbox = document.getElementById('showTimestamp');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', handleDrag);
+    dropZone.addEventListener('dragleave', handleDrag);
+    dropZone.addEventListener('drop', handleDrop);
+    fileInput.addEventListener('change', handleFileSelect);
+    processButton.addEventListener('click', processVideos);
+    showTimestampCheckbox.addEventListener('change', toggleTimestampFormat);
+
+    toggleTimestampFormat();
 });
 
-// ... (previous functions remain the same)
+function handleDrag(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('dropZone').classList.toggle('drag-active', e.type === 'dragover');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('dropZone').classList.remove('drag-active');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+    }
+}
+
+function handleFileSelect(e) {
+    if (e.target.files && e.target.files.length > 0) {
+        handleFiles(e.target.files);
+    }
+}
+
+function handleFiles(files) {
+    videos = { front: null, left: null, right: null, rear: null };
+    Array.from(files).forEach(file => {
+        if (file.name.includes('-front')) videos.front = file;
+        else if (file.name.includes('-left_repeater')) videos.left = file;
+        else if (file.name.includes('-right_repeater')) videos.right = file;
+        else if (file.name.includes('-back')) videos.rear = file;
+    });
+    updateFileList();
+    document.getElementById('processButton').disabled = Object.values(videos).every(v => v === null);
+}
+
+function updateFileList() {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '';
+    Object.entries(videos).forEach(([camera, file]) => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <span class="capitalize">${camera}: ${file ? file.name : 'Not selected'}</span>
+            <input type="checkbox" id="exclude-${camera}" ${excludedCameras.includes(camera) ? 'checked' : ''}>
+            <label for="exclude-${camera}">Exclude</label>
+        `;
+        div.querySelector(`#exclude-${camera}`).addEventListener('change', (e) => {
+            if (e.target.checked) {
+                excludedCameras.push(camera);
+            } else {
+                excludedCameras = excludedCameras.filter(c => c !== camera);
+            }
+        });
+        fileList.appendChild(div);
+    });
+}
+
+function toggleTimestampFormat() {
+    const showTimestamp = document.getElementById('showTimestamp').checked;
+    document.getElementById('timestampFormatGroup').style.display = showTimestamp ? 'block' : 'none';
+}
 
 async function processVideos() {
     const messageElement = document.getElementById('message');
