@@ -38,10 +38,8 @@ let ffmpeg;
 document.addEventListener('DOMContentLoaded', async () => {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
-    const fileList = document.getElementById('fileList');
     const processButton = document.getElementById('processButton');
     const showTimestampCheckbox = document.getElementById('showTimestamp');
-    const timestampFormatGroup = document.getElementById('timestampFormatGroup');
 
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', handleDrag);
@@ -55,7 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize ffmpeg
     try {
-        ffmpeg = FFmpeg.createFFmpeg({
+        ffmpeg = new FFmpeg();
+        await ffmpeg.load({
             log: true,
             progress: ({ ratio }) => {
                 const percent = (ratio * 100).toFixed(2);
@@ -63,7 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('progressText').textContent = `${percent}%`;
             },
         });
-        await ffmpeg.load();
         console.log('ffmpeg is ready to use');
         document.getElementById('message').textContent = 'ffmpeg.wasm is ready. You can now process videos.';
     } catch (error) {
@@ -153,8 +151,8 @@ async function processVideos() {
             if (video && !excludedCameras.includes(camera)) {
                 const inputName = `input_${camera}.mp4`;
                 const { width, height } = selectedLayout.cameras[camera];
-                ffmpeg.FS('writeFile', inputName, await FFmpeg.fetchFile(video));
-                await ffmpeg.run(
+                await ffmpeg.writeFile(inputName, await FFmpeg.fetchFile(video));
+                await ffmpeg.exec([
                     '-i', inputName,
                     '-vf', `scale=${width}:${height},setpts=${1/videoSpeed}*PTS`,
                     '-c:v', 'libx264',
@@ -162,7 +160,7 @@ async function processVideos() {
                     '-preset', 'medium',
                     '-an',
                     `output_${camera}.mp4`
-                );
+                ]);
                 messageElement.textContent = `Processed ${camera} camera`;
             }
         }
@@ -186,7 +184,7 @@ async function processVideos() {
         }
 
         const { width, height } = selectedLayout;
-        await ffmpeg.run(
+        await ffmpeg.exec([
             '-f', 'lavfi', '-i', `color=c=black:s=${width}x${height}`,
             ...inputs,
             '-filter_complex', filterComplex.join(''),
@@ -194,11 +192,11 @@ async function processVideos() {
             '-crf', '23',
             '-preset', 'medium',
             'output.mp4'
-        );
+        ]);
 
         messageElement.textContent = 'Finalizing video...';
 
-        const data = ffmpeg.FS('readFile', 'output.mp4');
+        const data = await ffmpeg.readFile('output.mp4');
         const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
         const videoUrl = URL.createObjectURL(videoBlob);
 
