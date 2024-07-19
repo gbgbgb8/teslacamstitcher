@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tesla Dashcam Video Processor</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -14,7 +17,7 @@
             Drag and drop video files here or click to select files
         </div>
 
-        <input type="file" id="fileInput" style="display: none;" multiple accept="video/*">
+        <input type="file" id="fileInput" multiple accept="video/*" style="display: none;">
 
         <div id="fileList" class="file-list"></div>
 
@@ -31,7 +34,7 @@
             </div>
 
             <div class="option-group">
-                <input type="checkbox" id="showTimestamp">
+                <input type="checkbox" id="showTimestamp" checked>
                 <label for="showTimestamp">Show timestamp</label>
             </div>
 
@@ -47,15 +50,7 @@
 
         <div id="output" class="output"></div>
 
-        <canvas id="outputCanvas" style="display: none;"></canvas>
+        <canvas id="outputCanvas"></canvas>
     </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script type="module">
-        import { createFFmpeg, fetchFile } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
-        window.createFFmpeg = createFFmpeg;
-        window.fetchFile = fetchFile;
-    </script>
-    <script src="script.js"></script>
 </body>
 </html>

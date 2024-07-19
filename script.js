@@ -1,5 +1,3 @@
-import { createFFmpeg, fetchFile } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
-
 const LAYOUTS = {
     MOBILE_LANDSCAPE: {
         width: 1920,
@@ -138,85 +136,29 @@ async function processVideos() {
     const canvas = document.getElementById('outputCanvas');
     const ctx = canvas.getContext('2d');
 
-    try {
-        messageElement.textContent = 'Processing videos...';
-        outputElement.innerHTML = '';
-        document.getElementById('processButton').disabled = true;
+    messageElement.textContent = 'Processing videos...';
+    outputElement.innerHTML = '';
+    document.getElementById('processButton').disabled = true;
 
-        const layout = document.getElementById('layout').value;
-        const showTimestamp = document.getElementById('showTimestamp').checked;
-        const timestampFormat = document.getElementById('timestampFormat').value;
+    const layout = document.getElementById('layout').value;
+    const showTimestamp = document.getElementById('showTimestamp').checked;
+    const timestampFormat = document.getElementById('timestampFormat').value;
 
-        const selectedLayout = LAYOUTS[layout];
-        canvas.width = selectedLayout.width;
-        canvas.height = selectedLayout.height;
+    const selectedLayout = LAYOUTS[layout];
+    canvas.width = selectedLayout.width;
+    canvas.height = selectedLayout.height;
 
-        const videoElements = {};
-        for (const [camera, file] of Object.entries(videos)) {
-            if (file && !excludedCameras.includes(camera)) {
-                const video = document.createElement('video');
-                video.src = URL.createObjectURL(file);
-                await video.play();
-                videoElements[camera] = video;
-            }
+    const videoElements = {};
+    for (const [camera, file] of Object.entries(videos)) {
+        if (file && !excludedCameras.includes(camera)) {
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            await video.play();
+            videoElements[camera] = video;
         }
-
-        const startTime = Date.now();
-
-        if ('VideoEncoder' in window) {
-            await processWithWebCodecs(canvas, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime);
-        } else {
-            await processWithCanvas(canvas, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime);
-        }
-
-        messageElement.textContent = 'Video processing complete!';
-    } catch (error) {
-        console.error('Error processing videos:', error);
-        messageElement.textContent = `Error: ${error.message}. Please try again.`;
-    } finally {
-        document.getElementById('processButton').disabled = false;
-    }
-}
-
-async function processWithWebCodecs(canvas, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime) {
-    const ctx = canvas.getContext('2d');
-    const stream = canvas.captureStream();
-    const [videoTrack] = stream.getVideoTracks();
-    const trackProcessor = new MediaStreamTrackProcessor({ track: videoTrack });
-    const reader = trackProcessor.readable.getReader();
-
-    const encoder = new VideoEncoder({
-        output: chunk => {
-        },
-        error: e => console.error(e)
-    });
-
-    await encoder.configure({
-        codec: 'vp8',
-        width: canvas.width,
-        height: canvas.height,
-        bitrate: 1_000_000
-    });
-
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        drawFrame(ctx, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime);
-        
-        const keyFrame = false;
-        const timestamp = value.timestamp;
-        
-        encoder.encode(value, { keyFrame });
-        value.close();
     }
 
-    await encoder.flush();
-    encoder.close();
-}
-
-async function processWithCanvas(canvas, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime) {
-    const ctx = canvas.getContext('2d');
+    const startTime = Date.now();
     const stream = canvas.captureStream();
     const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
@@ -224,45 +166,67 @@ async function processWithCanvas(canvas, videoElements, selectedLayout, showTime
     recorder.ondataavailable = e => chunks.push(e.data);
     recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
-        displayProcessedVideo(blob);
+        const videoUrl = URL.createObjectURL(blob);
+        outputElement.innerHTML = `
+            <video controls src="${videoUrl}" style="width: 100%;"></video>
+            <a href="${videoUrl}" download="processed_dashcam_video.webm">Download Video</a>
+        `;
+        messageElement.textContent = 'Video processing complete!';
     };
 
     recorder.start();
 
-    while (Object.values(videoElements)[0].currentTime < Object.values(videoElements)[0].duration) {
-        drawFrame(ctx, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime);
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        Object.values(videoElements).forEach(video => video.currentTime += 1/30);
-    }
+    function drawFrame() {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    recorder.stop();
-}
-
-function drawFrame(ctx, videoElements, selectedLayout, showTimestamp, timestampFormat, startTime) {
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    if (videoElements.front) {
-        drawVideo(ctx, videoElements.front, selectedLayout.cameras.front);
-    }
-
-    ['rear', 'left', 'right'].forEach(camera => {
-        if (videoElements[camera]) {
-            ctx.save();
-            ctx.globalAlpha = 0.7;
-            drawVideo(ctx, videoElements[camera], selectedLayout.cameras[camera]);
-            ctx.restore();
+        // Draw front camera view (main view)
+        if (videoElements.front) {
+            drawVideo(ctx, videoElements.front, selectedLayout.cameras.front);
         }
-    });
 
-    if (showTimestamp) {
-        const elapsedTime = Date.now() - startTime;
-        const timestamp = moment(startTime + elapsedTime).format(timestampFormat);
-        ctx.font = '24px Arial';
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.fillText(timestamp, ctx.canvas.width / 2, ctx.canvas.height - 10);
+        // Draw other camera views with fade effect
+        ['rear', 'left', 'right'].forEach(camera => {
+            if (videoElements[camera]) {
+                ctx.save();
+                ctx.globalAlpha = 0.7; // Adjust for desired fade effect
+                drawVideo(ctx, videoElements[camera], selectedLayout.cameras[camera]);
+                ctx.restore();
+            }
+        });
+
+        // Add subtle border between camera views
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 720);
+        ctx.lineTo(1920, 720);
+        ctx.moveTo(640, 720);
+        ctx.lineTo(640, 1080);
+        ctx.moveTo(1280, 720);
+        ctx.lineTo(1280, 1080);
+        ctx.stroke();
+
+        if (showTimestamp) {
+            const elapsedTime = Date.now() - startTime;
+            const timestamp = moment(startTime + elapsedTime).format(timestampFormat);
+            ctx.font = '24px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.fillText(timestamp, canvas.width / 2, canvas.height - 10);
+        }
+
+        if (Object.values(videoElements)[0].currentTime < Object.values(videoElements)[0].duration) {
+            requestAnimationFrame(drawFrame);
+        } else {
+            recorder.stop();
+            for (const video of Object.values(videoElements)) {
+                video.pause();
+            }
+        }
     }
+
+    drawFrame();
 }
 
 function drawVideo(ctx, video, layout) {
@@ -282,18 +246,4 @@ function drawVideo(ctx, video, layout) {
     }
 
     ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
-}
-
-function displayProcessedVideo(blob) {
-    const videoUrl = URL.createObjectURL(blob);
-    const outputElement = document.getElementById('output');
-    outputElement.innerHTML = `
-        <video controls src="${videoUrl}" style="width: 100%;"></video>
-        <a href="${videoUrl}" download="processed_dashcam_video.${blob.type.split('/')[1]}">Download Video</a>
-    `;
-}
-
-function updateProgress(progress) {
-    const messageElement = document.getElementById('message');
-    messageElement.textContent = `Processing videos... ${Math.round(progress * 100)}%`;
 }
