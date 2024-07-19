@@ -1,65 +1,89 @@
 # Tesla Dashcam Video Processor
 
 ## Overview
-The Tesla Dashcam Video Processor is a browser-based tool that allows users to combine and process video files from Tesla's dashcam and sentry mode. It provides various layout options and features to create a single, comprehensive video output from multiple camera inputs.
+The Tesla Dashcam Video Processor is a web-based tool that allows users to combine and process video files from Tesla's dashcam and sentry mode. It provides various layout options and features to create a single, comprehensive video output from multiple camera inputs.
+Made with Claude, GPT4o, etc.
 
 ## Current Features
 - Drag-and-drop interface for easy file uploading
-- Support for multiple video layouts: Fullscreen, Widescreen, Diamond, and Cross
+- Support for multiple video layouts:
+  - Mobile Landscape
+  - Fullscreen
+  - Widescreen
+  - Diamond
+  - Cross
 - Option to exclude specific cameras
 - Customizable timestamp overlay
-- Background blur effect for aesthetically pleasing video composition
+- Fade effect for secondary cameras in Mobile Landscape layout
 - Aspect ratio preservation to prevent video distortion
 - In-browser video processing using HTML5 Canvas and MediaRecorder APIs
 - Downloadable output in WebM format
+- Responsive design for both desktop and mobile devices
 
-## Code Review and Issues
+## Requested Features (To Be Implemented)
+1. Drag-and-drop rearrangement of camera views:
+   - Allow users to customize the position of each camera view within the layout
+   - Translate the custom arrangement to the final video output
+2. Optional borders:
+   - Add a toggle to show/hide borders between camera views
+   - Borders should be off by default
+3. Adjustable settings exposed in the UI:
+   - Secondary camera opacity control
+   - Video playback speed control
 
-### HTML (index.html)
-1. **Accessibility**: The file input is hidden, which may cause accessibility issues. Consider using `aria-label` or `aria-labelledby` to improve screen reader compatibility.
-2. **Validation**: There's no form validation for the timestamp format input.
+## Suggested Enhancements
+1. Preview thumbnails:
+   - Generate and display thumbnails for each uploaded video file
+   - Update thumbnails in real-time when layout or arrangement changes
+2. Color customization:
+   - Allow users to choose custom colors for borders, timestamps, and other UI elements
+3. Export options:
+   - Add options for different output formats (e.g., MP4, AVI)
+   - Allow users to choose video quality settings
+4. Keyboard shortcuts:
+   - Implement keyboard shortcuts for common actions (e.g., play/pause, skip forward/backward)
+5. Batch processing:
+   - Enable users to queue multiple sets of dashcam videos for sequential processing
+6. Save/Load configurations:
+   - Allow users to save their layout and settings preferences
+   - Provide option to load saved configurations for quick setup
 
-### JavaScript (script.js)
-1. **Error Handling**: There's limited error handling, especially for file reading and video processing.
-2. **Performance**: The video processing might be slow for longer videos or on less powerful devices.
-3. **Browser Compatibility**: The code uses modern APIs which might not work in older browsers.
-4. **Memory Management**: Large video files might cause memory issues as everything is processed in-browser.
-
-### CSS (style.css)
-1. **Responsiveness**: The design is not fully responsive and might not work well on smaller screens.
-2. **Customization**: Limited color scheme customization options.
-
-## Planned Fixes and Improvements
-
-### Short-term Fixes
-1. Improve accessibility by adding proper ARIA attributes to the file input.
-2. Implement basic form validation for the timestamp format input.
-3. Add error handling for file reading and video processing.
-4. Implement a progress indicator for video processing.
-
-### Long-term Improvements
-1. Optimize video processing performance, possibly by using Web Workers or chunked processing.
-2. Implement fallbacks or polyfills for older browsers.
-3. Add support for more video formats (currently limited to what the browser supports).
-4. Implement a more responsive design for better mobile compatibility.
-5. Add color scheme customization options.
-6. Implement server-side processing for handling larger files and reducing client-side load.
+## Technical Improvements
+1. Performance optimization:
+   - Implement Web Workers for better performance during video processing
+   - Add progress indicators for longer operations
+2. Error handling:
+   - Improve error messages and handling for various scenarios (e.g., unsupported file types, processing errors)
+3. Accessibility:
+   - Enhance keyboard navigation and screen reader compatibility
+4. Testing:
+   - Implement unit tests for core functions
+   - Add end-to-end tests for the user interface
 
 ## How to Use
-1. Open `index.html` in a modern web browser.
-2. Drag and drop Tesla dashcam video files onto the designated area, or click to select files.
-3. Choose the desired layout from the dropdown menu.
-4. Optionally, configure the timestamp display and format.
-5. Click "Process Videos" to start the video processing.
-6. Once processing is complete, you can preview the video and download it.
+1. Open `index.html` in a modern web browser
+2. Drag and drop Tesla dashcam video files onto the designated area, or click to select files
+3. Choose the desired layout from the dropdown menu
+4. Configure timestamp display and format if needed
+5. Click "Process Videos" to start the video processing
+6. Once processing is complete, preview the video and download it
 
 ## Development Setup
-1. Ensure you have the following files in your project directory:
+1. Clone the repository
+2. Ensure you have the following files in your project directory:
    - `index.html`
    - `script.js`
    - `style.css`
-2. No build process is required as this is a client-side application.
-3. For development, it's recommended to use a local server to avoid CORS issues when loading local files.
+3. No build process is required as this is a client-side application
+4. For development, it's recommended to use a local server to avoid CORS issues when loading local files
+5. currently deployed to https://teslacamstitcher.vercel.app/
+
+## Next Steps
+1. Implement drag-and-drop rearrangement of camera views
+2. Add optional borders with a toggle in the UI
+3. Implement adjustable settings for secondary camera opacity and video playback speed
+4. Generate and display preview thumbnails for uploaded videos
+5. Enhance error handling and user feedback during video processing
 
 ## License
-MIT, do wtf you want
+This project is open source and available under the [MIT License](LICENSE).
